@@ -24,6 +24,7 @@
 
 package org.jenkinsci.plugins.workflow.cps;
 
+import org.apache.commons.io.Charsets;
 import org.jenkinsci.plugins.workflow.support.steps.build.RunWrapper;
 import com.cloudbees.groovy.cps.SerializableScript;
 import groovy.lang.GroovyShell;
@@ -34,6 +35,7 @@ import hudson.model.Queue;
 import hudson.model.Run;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import javax.annotation.CheckForNull;
 import org.codehaus.groovy.control.CompilationFailedException;
 import org.codehaus.groovy.runtime.DefaultGroovyMethods;
@@ -110,7 +112,11 @@ public abstract class CpsScript extends SerializableScript {
             } catch (IOException x) {
                 throw new InvokerInvocationException(x);
             }
+        } else if (property.equals("foobar")) {// Test to get the point across
+            GroovyShell shell = execution.getShell();
+            return shell.parse(new InputStreamReader(shell.getClassLoader().getResourceAsStream("test/FooBar.groovy"), Charsets.UTF_8), "test/FooBar.groovy");
         }
+
         return super.getProperty(property);
     }
 
