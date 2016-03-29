@@ -73,31 +73,29 @@ div(class:'dsl-reference'){
 }
 
 def generateStepHelp(StepDescriptor d) throws Exception {
-  return {
-    dt(class:'step-title'){
-      code(d.getFunctionName())
-      raw(": ${d.getDisplayName()}")
+  dt(class:'step-title'){
+    code(d.getFunctionName())
+    raw(": ${d.getDisplayName()}")
+  }
+  dd(class:'step-body'){
+    try {
+      generateHelp(new DescribableModel(d.clazz), 3);
+    } catch (Exception x) {
+      pre { code(x) }
     }
-    dd(class:'step-body'){
-      try {
-        generateHelp(new DescribableModel(d.clazz), 3);
-      } catch (Exception x) {
-        pre { code(x) }
-      }
-    }
-  }.call()
+  }
 }
 
 def generateHelp(DescribableModel model, int headerLevel) throws Exception {
-  return {
-    String help = model.help;
-    if (help != null && !help.equals("")) {
-      div(class:"help", style:"display: block") { raw(help) }
-    }
-    if (stack.contains(model.type))
-      return; // recursion. just show the title & cut the search
+  String help = model.help;
+  if (help != null && !help.equals("")) {
+    div(class:"help", style:"display: block") { raw(help) }
+  }
+  if (stack.contains(model.type))
+    return; // recursion. just show the title & cut the search
 
-    stack.push(model.type);
+  stack.push(model.type);
+  try {
     dl(class:'help-list mandatory'){
       // TODO else could use RequestDispatcher (as in Descriptor.doHelp) to serve template-based help
       model.parameters.findAll{ it.required }.each { p ->
@@ -122,76 +120,73 @@ def generateHelp(DescribableModel model, int headerLevel) throws Exception {
         }
       }
     }
+  } finally {
     stack.pop();
-  }.call()
+  }
 }
 
 def generateAttrHelp(DescribableParameter param, int headerLevel) throws Exception {
-  return {
-    String help = param.help;
-    if (help != null && !help.equals("")) {
-      div(class:"help", style:"display: block") { raw(help) }
-    }
-    describeType(param.type, headerLevel);
-  }.call()
+  String help = param.help;
+  if (help != null && !help.equals("")) {
+    div(class:"help", style:"display: block") { raw(help) }
+  }
+  describeType(param.type, headerLevel);
 }
 
 def describeType(ParameterType type, int headerLevel) throws Exception {
-  return {
-    int nextHeaderLevel = Math.min(6, headerLevel + 1);
-    if (type instanceof AtomicType) {
-      div {
-        strong(_("Type:"))
-        text(type)
+  int nextHeaderLevel = Math.min(6, headerLevel + 1);
+  if (type instanceof AtomicType) {
+    div {
+      strong(_("Type:"))
+      text(type)
+    }
+  } else if (type instanceof EnumType) {
+    div(class:'values-box nested'){
+      div(class:'marker-title value-title'){
+        span(_("Values:"))
       }
-    } else if (type instanceof EnumType) {
-      div(class:'values-box nested'){
-        div(class:'marker-title value-title'){
-          span(_("Values:"))
-        }
-        for (String v : ((EnumType) type).getValues()) {
-          div(class:'value list-item') { code(v) }
-        }
+      for (String v : ((EnumType) type).getValues()) {
+        div(class:'value list-item') { code(v) }
       }
-    } else if (type instanceof ArrayType) {
-      div(class:'array-list-box marker'){
-        div(class:'array-title marker-title'){
-          span(_("Array/List:"))
-        }
-        div(class:'array-list'){
-          describeType(((ArrayType) type).getElementType(), headerLevel)
-        }
+    }
+  } else if (type instanceof ArrayType) {
+    div(class:'array-list-box marker'){
+      div(class:'array-title marker-title'){
+        span(_("Array/List:"))
       }
-    } else if (type instanceof HomogeneousObjectType) {
-      dl(class:'nested-object-box nested') {
-        dt(_("Nested object"))
-        dd{
-          generateHelp(((HomogeneousObjectType) type).getSchemaType(), nextHeaderLevel);
-        }
+      div(class:'array-list'){
+        describeType(((ArrayType) type).getElementType(), headerLevel)
       }
-    } else if (type instanceof HeterogeneousObjectType) {
-      dl(class:'nested-choice-box nested') {
-        dt(_("Nested choice of objects"))
-        dd{
+    }
+  } else if (type instanceof HomogeneousObjectType) {
+    dl(class:'nested-object-box nested') {
+      dt(_("Nested object"))
+      dd{
+        generateHelp(((HomogeneousObjectType) type).getSchemaType(), nextHeaderLevel);
+      }
+    }
+  } else if (type instanceof HeterogeneousObjectType) {
+    dl(class:'nested-choice-box nested') {
+      dt(_("Nested choice of objects"))
+      dd{
 
-          dl(class:'schema') {
-            for (Map.Entry<String, DescribableModel> entry : ((HeterogeneousObjectType) type).getTypes().entrySet()) {
-              dt {
-                code(DescribableModel.CLAZZ + ": '" + entry.key + "'")
-              }
-              dd{
-                generateHelp(entry.value, nextHeaderLevel);
-              }
+        dl(class:'schema') {
+          for (Map.Entry<String, DescribableModel> entry : ((HeterogeneousObjectType) type).getTypes().entrySet()) {
+            dt {
+              code(DescribableModel.CLAZZ + ": '" + entry.key + "'")
+            }
+            dd{
+              generateHelp(entry.value, nextHeaderLevel);
             }
           }
         }
       }
-    } else if (type instanceof ErrorType) {
-      Exception x = ((ErrorType) type).getError();
-      pre { code(x) }
-    } else {
-      assert false: type;
     }
-  }.call()
+  } else if (type instanceof ErrorType) {
+    Exception x = ((ErrorType) type).getError();
+    pre { code(x) }
+  } else {
+    assert false: type;
+  }
 }
 st.adjunct(includes: 'org.jenkinsci.plugins.workflow.cps.Snippetizer.workflow')
